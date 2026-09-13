@@ -154,15 +154,15 @@ export default function TaskListScreen({ navigation }: any) {
                                 {item.title}
                             </Text>
                             <Chip
-                                label={item.priority}
-                                size="small"
                                 style={[
                                     styles.priorityChip,
                                     item.priority === 'high' && styles.priorityHigh,
                                     item.priority === 'medium' && styles.priorityMedium,
                                     item.priority === 'low' && styles.priorityLow,
                                 ]}
-                            />
+                            >
+                                {item.priority}
+                            </Chip>
                         </View>
 
                         {item.description && (
