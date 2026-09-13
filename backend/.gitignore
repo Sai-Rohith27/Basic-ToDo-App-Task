@@ -1,0 +1,36 @@
+# ── Dependencies ──
+node_modules/
+
+# ── Environment Variables (SECRETS — never commit!) ──
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ── TypeScript Build Output ──
+dist/
+build/
+*.js.map
+
+# ── Logs ──
+logs/
+*.log
+npm-debug.log*
+
+# ── OS Files ──
+.DS_Store
+Thumbs.db
+
+# ── IDE / Editor ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Firebase ──
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+
+# ── Coverage / Testing ──
+coverage/
+.nyc_output/
