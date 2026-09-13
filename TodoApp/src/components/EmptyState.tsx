@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { IconButton } from 'react-native-paper';
-import { Colors, Spacing, Typography } from '../theme';
+import { useTheme, Spacing, Typography } from '../theme';
 import AppButton from './AppButton';
 
 interface EmptyStateProps {
@@ -24,18 +24,20 @@ export default function EmptyState({
     actionLabel,
     onAction,
 }: EmptyStateProps) {
+    const { colors } = useTheme();
+
     return (
         <View style={styles.container}>
-            <View style={styles.iconContainer}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.surfaceAlt }]}>
                 <IconButton
                     icon={icon}
                     size={48}
-                    iconColor={Colors.textTertiary}
+                    iconColor={colors.textTertiary}
                 />
             </View>
-            <Text style={styles.title}>{title}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
             {subtitle ? (
-                <Text style={styles.subtitle}>{subtitle}</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
             ) : null}
             {actionLabel && onAction ? (
                 <View style={styles.buttonWrapper}>
@@ -60,19 +62,16 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.huge,
     },
     iconContainer: {
-        backgroundColor: Colors.surfaceAlt,
         borderRadius: 100,
         marginBottom: Spacing.lg,
     },
     title: {
         ...Typography.h3,
-        color: Colors.textPrimary,
         textAlign: 'center',
         marginBottom: Spacing.sm,
     },
     subtitle: {
         ...Typography.body,
-        color: Colors.textSecondary,
         textAlign: 'center',
         marginBottom: Spacing.xl,
     },

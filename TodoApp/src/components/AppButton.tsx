@@ -6,8 +6,9 @@ import {
     ActivityIndicator,
     ViewStyle,
     TextStyle,
+    Animated,
 } from 'react-native';
-import { Colors, Spacing, Radii, Typography, Layout, Shadows } from '../theme';
+import { useTheme, Spacing, Radii, Typography, Layout, Shadows, AnimDuration } from '../theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
@@ -26,7 +27,7 @@ interface AppButtonProps {
 /**
  * APP BUTTON
  * Themed button with variants: primary, secondary, danger, ghost.
- * Supports loading state, disabled state, and icons.
+ * Supports loading state, disabled state, icons, and press animation.
  */
 export default function AppButton({
     title,
@@ -39,80 +40,108 @@ export default function AppButton({
     textStyle,
     fullWidth = true,
 }: AppButtonProps) {
+    const { colors } = useTheme();
     const isDisabled = disabled || loading;
+    const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
+    // Micro-interaction: subtle scale on press
+    const handlePressIn = () => {
+        Animated.spring(scaleAnim, {
+            toValue: 0.97,
+            useNativeDriver: true,
+            speed: 50,
+            bounciness: 4,
+        }).start();
+    };
+
+    const handlePressOut = () => {
+        Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            speed: 50,
+            bounciness: 4,
+        }).start();
+    };
 
     // Get variant-specific styles
-    const variantStyles = getVariantStyles(variant, isDisabled);
+    const variantStyles = getVariantStyles(variant, isDisabled, colors);
 
     return (
-        <TouchableOpacity
-            onPress={onPress}
-            disabled={isDisabled}
-            activeOpacity={0.7}
-            style={[
-                styles.button,
-                variantStyles.container,
-                fullWidth && styles.fullWidth,
-                isDisabled && styles.disabled,
-                style,
-            ]}
-        >
-            {loading ? (
-                <ActivityIndicator
-                    size="small"
-                    color={variantStyles.loaderColor}
-                />
-            ) : (
-                <>
-                    {icon}
-                    <Text style={[styles.text, variantStyles.text, textStyle]}>
-                        {title}
-                    </Text>
-                </>
-            )}
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <TouchableOpacity
+                onPress={onPress}
+                disabled={isDisabled}
+                activeOpacity={0.8}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                accessibilityRole="button"
+                accessibilityLabel={title}
+                accessibilityState={{ disabled: isDisabled }}
+                style={[
+                    styles.button,
+                    variantStyles.container,
+                    fullWidth && styles.fullWidth,
+                    isDisabled && styles.disabled,
+                    style,
+                ]}
+            >
+                {loading ? (
+                    <ActivityIndicator
+                        size="small"
+                        color={variantStyles.loaderColor}
+                    />
+                ) : (
+                    <>
+                        {icon}
+                        <Text style={[styles.text, variantStyles.text, textStyle]}>
+                            {title}
+                        </Text>
+                    </>
+                )}
+            </TouchableOpacity>
+        </Animated.View>
     );
 }
 
 /**
- * Returns styles based on button variant
+ * Returns styles based on button variant and current theme colors
  */
-function getVariantStyles(variant: ButtonVariant, disabled: boolean) {
+function getVariantStyles(variant: ButtonVariant, disabled: boolean, colors: any) {
     switch (variant) {
         case 'primary':
             return {
                 container: {
-                    backgroundColor: disabled ? Colors.disabled : Colors.primary,
+                    backgroundColor: disabled ? colors.disabled : colors.primary,
                     ...Shadows.sm,
                 } as ViewStyle,
                 text: {
-                    color: Colors.textInverse,
+                    color: colors.textInverse,
                 } as TextStyle,
-                loaderColor: Colors.textInverse,
+                loaderColor: colors.textInverse,
             };
         case 'secondary':
             return {
                 container: {
-                    backgroundColor: Colors.primaryBg,
+                    backgroundColor: colors.primaryBg,
                     borderWidth: 1.5,
-                    borderColor: Colors.primary,
+                    borderColor: colors.primary,
                 } as ViewStyle,
                 text: {
-                    color: Colors.primary,
+                    color: colors.primary,
                 } as TextStyle,
-                loaderColor: Colors.primary,
+                loaderColor: colors.primary,
             };
         case 'danger':
             return {
                 container: {
-                    backgroundColor: Colors.errorBg,
+                    backgroundColor: colors.errorBg,
                     borderWidth: 1.5,
-                    borderColor: Colors.error,
+                    borderColor: colors.error,
                 } as ViewStyle,
                 text: {
-                    color: Colors.error,
+                    color: colors.error,
                 } as TextStyle,
-                loaderColor: Colors.error,
+                loaderColor: colors.error,
             };
         case 'ghost':
             return {
@@ -120,9 +149,9 @@ function getVariantStyles(variant: ButtonVariant, disabled: boolean) {
                     backgroundColor: 'transparent',
                 } as ViewStyle,
                 text: {
-                    color: Colors.primary,
+                    color: colors.primary,
                 } as TextStyle,
-                loaderColor: Colors.primary,
+                loaderColor: colors.primary,
             };
     }
 }

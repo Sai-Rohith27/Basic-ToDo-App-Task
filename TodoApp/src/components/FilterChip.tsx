@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, Spacing, Radii, Typography } from '../theme';
+import { useTheme, Spacing, Radii, Typography } from '../theme';
 
 interface FilterChipProps {
     label: string;
@@ -13,7 +13,7 @@ interface FilterChipProps {
 /**
  * FILTER CHIP
  * Selectable chip for filter/sort options.
- * Shows active state when selected.
+ * Shows active state when selected. Theme-aware for dark mode.
  */
 export default function FilterChip({
     label,
@@ -22,26 +22,37 @@ export default function FilterChip({
     count,
     style,
 }: FilterChipProps) {
+    const { colors } = useTheme();
+
     return (
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            accessibilityLabel={`Filter: ${label}${count !== undefined ? `, ${count} items` : ''}`}
             style={[
                 styles.chip,
-                selected && styles.chipSelected,
+                {
+                    backgroundColor: selected ? colors.primaryBg : colors.surfaceAlt,
+                    borderColor: selected ? colors.primary : 'transparent',
+                },
                 style,
             ]}
         >
             <Text style={[
                 styles.label,
-                selected && styles.labelSelected,
+                { color: selected ? colors.primary : colors.textSecondary },
             ]}>
                 {label}
             </Text>
             {count !== undefined && (
                 <Text style={[
                     styles.count,
-                    selected && styles.countSelected,
+                    {
+                        color: selected ? colors.primary : colors.textTertiary,
+                        backgroundColor: selected ? colors.primaryBg : colors.border,
+                    },
                 ]}>
                     {count}
                 </Text>
@@ -57,33 +68,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
         borderRadius: Radii.full,
-        backgroundColor: Colors.surfaceAlt,
         borderWidth: 1.5,
-        borderColor: 'transparent',
         gap: 6,
-    },
-    chipSelected: {
-        backgroundColor: Colors.primaryBg,
-        borderColor: Colors.primary,
     },
     label: {
         ...Typography.captionMedium,
-        color: Colors.textSecondary,
-    },
-    labelSelected: {
-        color: Colors.primary,
     },
     count: {
         ...Typography.small,
-        color: Colors.textTertiary,
-        backgroundColor: Colors.border,
         paddingHorizontal: 6,
         paddingVertical: 1,
         borderRadius: Radii.full,
         overflow: 'hidden',
-    },
-    countSelected: {
-        color: Colors.primary,
-        backgroundColor: Colors.primaryBg,
     },
 });

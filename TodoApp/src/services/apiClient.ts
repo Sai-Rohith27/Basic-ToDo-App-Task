@@ -12,7 +12,7 @@ class ApiClient {
 
     constructor() {
         // Backend server URL
-        this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+        this.baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
         // Create axios instance
         this.client = axios.create({

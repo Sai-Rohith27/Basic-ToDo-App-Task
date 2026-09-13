@@ -1,208 +1,228 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
     View,
     StyleSheet,
     FlatList,
     RefreshControl,
+    Text,
+    ScrollView,
     TouchableOpacity,
 } from 'react-native';
-import { Text, FAB, Chip, Button } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconButton } from 'react-native-paper';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-import { fetchTasks, updateTask, deleteTask, setFilter } from '../../redux/slices/taskSlice';
-import { logoutUser } from '../../services/firebaseAuth';
-import { clearAuth } from '../../redux/slices/authSlice';
+import {
+    fetchTasks,
+    toggleComplete,
+    setFilter,
+    setSortBy,
+    TaskFilter,
+    TaskSortBy,
+} from '../../redux/slices/taskSlice';
+import { useTheme, Spacing, Typography, Radii } from '../../theme';
+import TaskCard from '../../components/TaskCard';
+import FilterChip from '../../components/FilterChip';
+import EmptyState from '../../components/EmptyState';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import { getProcessedTasks, getTaskStats } from '../../utils/taskSorter';
 
 /**
  * TASK LIST SCREEN
- * Shows all user's tasks with options to add, edit, delete
+ * Full task list with filters and sorting.
+ * Shows all tasks with horizontal filter chips and sort toggle.
  */
 export default function TaskListScreen({ navigation }: any) {
     const dispatch = useAppDispatch();
-    const { tasks, loading, filter, error } = useAppSelector((state) => state.tasks);
-    const [refreshing, setRefreshing] = useState(false);
+    const { tasks, loading, filter, sortBy } = useAppSelector((state) => state.tasks);
+    const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
 
-    // Fetch tasks when screen loads
+    const [refreshing, setRefreshing] = React.useState(false);
+
+    // Fetch tasks on mount
     useEffect(() => {
         dispatch(fetchTasks() as any);
     }, [dispatch]);
 
-    // Handle refresh
-    const onRefresh = async () => {
+    // Pull-to-refresh
+    const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await dispatch(fetchTasks() as any);
         setRefreshing(false);
+    }, [dispatch]);
+
+    // Process tasks with current filter/sort
+    const processedTasks = getProcessedTasks(tasks, filter, sortBy);
+    const stats = getTaskStats(tasks);
+
+    // ── Filter config ──
+    const filters: { key: TaskFilter; label: string; count: number }[] = [
+        { key: 'all', label: 'All', count: stats.total },
+        { key: 'pending', label: 'Pending', count: stats.pending },
+        { key: 'completed', label: 'Done', count: stats.completed },
+        { key: 'overdue', label: 'Overdue', count: stats.overdue },
+    ];
+
+    // ── Sort config ──
+    const sorts: { key: TaskSortBy; label: string; icon: string }[] = [
+        { key: 'deadline', label: 'Deadline', icon: 'clock-outline' },
+        { key: 'priority', label: 'Priority', icon: 'flag-outline' },
+        { key: 'date', label: 'Newest', icon: 'sort-calendar-descending' },
+    ];
+
+    // Handlers
+    const handleTaskPress = (taskId: string) => {
+        navigation.navigate('TaskDetail', { taskId });
     };
 
-    // Handle logout
-    const handleLogout = async () => {
-        await logoutUser();
-        dispatch(clearAuth());
+    const handleToggleComplete = (taskId: string) => {
+        dispatch(toggleComplete(taskId) as any);
     };
 
-    // Handle mark complete
-    const handleToggleComplete = (taskId: string, currentStatus: boolean) => {
-        dispatch(
-            updateTask({
-                taskId,
-                updates: { completed: !currentStatus },
-            }) as any
-        );
+    // Empty state config based on active filter
+    const emptyConfig: Record<TaskFilter, { icon: string; title: string; subtitle: string }> = {
+        all: {
+            icon: 'clipboard-text-outline',
+            title: 'No tasks yet',
+            subtitle: 'Tap + to create your first task',
+        },
+        pending: {
+            icon: 'check-circle-outline',
+            title: 'All caught up!',
+            subtitle: 'You have no pending tasks',
+        },
+        completed: {
+            icon: 'trophy-outline',
+            title: 'No completed tasks',
+            subtitle: 'Start completing tasks to see them here',
+        },
+        overdue: {
+            icon: 'shield-check-outline',
+            title: 'No overdue tasks',
+            subtitle: 'Great job staying on schedule!',
+        },
     };
 
-    // Handle delete
-    const handleDelete = (taskId: string) => {
-        dispatch(deleteTask(taskId) as any);
-    };
-
-    // Filter tasks based on current filter
-    const filteredTasks = tasks.filter((task) => {
-        if (filter === 'completed') return task.completed;
-        if (filter === 'pending') return !task.completed;
-        return true;
-    });
-
-    // Render empty state
-    if (!loading && filteredTasks.length === 0) {
-        return (
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>Your Tasks</Text>
-                    <Button mode="text" onPress={handleLogout}>
-                        Logout
-                    </Button>
-                </View>
-
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyTitle}>No tasks yet!</Text>
-                    <Text style={styles.emptySubtitle}>
-                        Tap the + button to create your first task
-                    </Text>
-                </View>
-
-                <FAB
-                    icon="plus"
-                    onPress={() => navigation.navigate('AddTask')}
-                    style={styles.fab}
-                />
-            </View>
-        );
-    }
-
-    // Render task list
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Your Tasks</Text>
-                <Button mode="text" onPress={handleLogout} textColor="#ff6b6b">
-                    Logout
-                </Button>
-            </View>
-
-            {/* FILTER CHIPS */}
-            <View style={styles.filterContainer}>
-                <Chip
-                    selected={filter === 'all'}
-                    onPress={() => dispatch(setFilter('all'))}
-                    style={styles.chip}
-                >
-                    All
-                </Chip>
-                <Chip
-                    selected={filter === 'pending'}
-                    onPress={() => dispatch(setFilter('pending'))}
-                    style={styles.chip}
-                >
-                    Pending
-                </Chip>
-                <Chip
-                    selected={filter === 'completed'}
-                    onPress={() => dispatch(setFilter('completed'))}
-                    style={styles.chip}
-                >
-                    Done
-                </Chip>
-            </View>
-
-            {/* ERROR MESSAGE */}
-            {error && (
-                <View style={styles.errorBox}>
-                    <Text style={styles.errorText}>{error}</Text>
-                </View>
-            )}
-
-            {/* TASK LIST */}
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <FlatList
-                data={filteredTasks}
+                data={processedTasks}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                    <TouchableOpacity
-                        style={[
-                            styles.taskCard,
-                            item.completed && styles.taskCardCompleted,
-                        ]}
-                        onPress={() =>
-                            navigation.navigate('EditTask', { taskId: item.id })
-                        }
-                    >
-                        <View style={styles.taskHeader}>
-                            <Text
-                                style={[
-                                    styles.taskTitle,
-                                    item.completed && styles.taskTitleCompleted,
-                                ]}
-                            >
-                                {item.title}
-                            </Text>
-                            <Chip
-                                style={[
-                                    styles.priorityChip,
-                                    item.priority === 'high' && styles.priorityHigh,
-                                    item.priority === 'medium' && styles.priorityMedium,
-                                    item.priority === 'low' && styles.priorityLow,
-                                ]}
-                            >
-                                {item.priority}
-                            </Chip>
-                        </View>
-
-                        {item.description && (
-                            <Text style={styles.taskDescription}>{item.description}</Text>
-                        )}
-
-                        <Text style={styles.taskDeadline}>
-                            Due: {new Date(item.deadline).toLocaleDateString()}
-                        </Text>
-
-                        <View style={styles.taskActions}>
-                            <Button
-                                mode="text"
-                                onPress={() => handleToggleComplete(item.id, item.completed)}
-                                compact={true}
-                            >
-                                {item.completed ? 'Undo' : 'Complete'}
-                            </Button>
-                            <Button
-                                mode="text"
-                                textColor="#ff6b6b"
-                                onPress={() => handleDelete(item.id)}
-                                compact={true}
-                            >
-                                Delete
-                            </Button>
-                        </View>
-                    </TouchableOpacity>
-                )}
+                contentContainerStyle={[
+                    styles.listContent,
+                    { paddingTop: insets.top + Spacing.lg },
+                ]}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={colors.primary}
+                        colors={[colors.primary]}
+                    />
                 }
-                scrollEnabled={true}
-            />
+                ListHeaderComponent={
+                    <>
+                        {/* ── Screen Title ── */}
+                        <View style={styles.headerRow}>
+                            <Text style={[styles.title, { color: colors.textPrimary }]}>
+                                My Tasks
+                            </Text>
+                            <Text style={[styles.countBadge, { color: colors.textSecondary }]}>
+                                {processedTasks.length} task{processedTasks.length !== 1 ? 's' : ''}
+                            </Text>
+                        </View>
 
-            {/* ADD TASK BUTTON */}
-            <FAB
-                icon="plus"
-                onPress={() => navigation.navigate('AddTask')}
-                style={styles.fab}
+                        {/* ── Filter Chips ── */}
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.chipRow}
+                        >
+                            {filters.map((f) => (
+                                <FilterChip
+                                    key={f.key}
+                                    label={f.label}
+                                    selected={filter === f.key}
+                                    onPress={() => dispatch(setFilter(f.key))}
+                                    count={f.count}
+                                />
+                            ))}
+                        </ScrollView>
+
+                        {/* ── Sort Toggles ── */}
+                        <View style={styles.sortRow}>
+                            <Text style={[styles.sortLabel, { color: colors.textTertiary }]}>
+                                Sort by:
+                            </Text>
+                            {sorts.map((s) => (
+                                <TouchableOpacity
+                                    key={s.key}
+                                    onPress={() => dispatch(setSortBy(s.key))}
+                                    activeOpacity={0.7}
+                                    style={[
+                                        styles.sortChip,
+                                        {
+                                            backgroundColor:
+                                                sortBy === s.key
+                                                    ? colors.primaryBg
+                                                    : 'transparent',
+                                        },
+                                    ]}
+                                >
+                                    <IconButton
+                                        icon={s.icon}
+                                        size={14}
+                                        iconColor={
+                                            sortBy === s.key
+                                                ? colors.primary
+                                                : colors.textTertiary
+                                        }
+                                        style={{ margin: 0, padding: 0 }}
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.sortText,
+                                            {
+                                                color:
+                                                    sortBy === s.key
+                                                        ? colors.primary
+                                                        : colors.textTertiary,
+                                            },
+                                        ]}
+                                    >
+                                        {s.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* Skeleton loader */}
+                        {loading && tasks.length === 0 && <SkeletonLoader count={5} />}
+                    </>
+                }
+                renderItem={({ item }) => (
+                    <TaskCard
+                        task={item}
+                        onPress={() => handleTaskPress(item.id)}
+                        onToggleComplete={() => handleToggleComplete(item.id)}
+                    />
+                )}
+                ListEmptyComponent={
+                    !loading ? (
+                        <EmptyState
+                            icon={emptyConfig[filter].icon}
+                            title={emptyConfig[filter].title}
+                            subtitle={emptyConfig[filter].subtitle}
+                            actionLabel={filter === 'all' ? 'Add Task' : undefined}
+                            onAction={
+                                filter === 'all'
+                                    ? () => navigation.navigate('AddTab')
+                                    : undefined
+                            }
+                        />
+                    ) : null
+                }
+                showsVerticalScrollIndicator={false}
             />
         </View>
     );
@@ -211,122 +231,52 @@ export default function TaskListScreen({ navigation }: any) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
     },
-    header: {
+    listContent: {
+        paddingHorizontal: Spacing.xl,
+        paddingBottom: Spacing.huge + 60,
+    },
+
+    // ── Header ──
+    headerRow: {
         flexDirection: 'row',
+        alignItems: 'baseline',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 8,
-        backgroundColor: '#ffffff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
+        marginBottom: Spacing.lg,
     },
     title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#333',
+        ...Typography.h1,
     },
-    filterContainer: {
+    countBadge: {
+        ...Typography.caption,
+    },
+
+    // ── Filter Chips ──
+    chipRow: {
+        gap: Spacing.sm,
+        paddingBottom: Spacing.md,
+    },
+
+    // ── Sort Row ──
+    sortRow: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#ffffff',
-    },
-    chip: {
-        marginRight: 8,
-    },
-    taskCard: {
-        backgroundColor: '#ffffff',
-        marginHorizontal: 16,
-        marginVertical: 8,
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-    },
-    taskCardCompleted: {
-        backgroundColor: '#f0f0f0',
-        opacity: 0.6,
-    },
-    taskHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: Spacing.lg,
+        gap: Spacing.sm,
     },
-    taskTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#333',
-        flex: 1,
+    sortLabel: {
+        ...Typography.small,
+        marginRight: Spacing.xs,
     },
-    taskTitleCompleted: {
-        textDecorationLine: 'line-through',
-        color: '#999',
-    },
-    taskDescription: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 8,
-    },
-    taskDeadline: {
-        fontSize: 12,
-        color: '#999',
-        marginBottom: 8,
-    },
-    priorityChip: {
-        marginLeft: 8,
-    },
-    priorityHigh: {
-        backgroundColor: '#ffcdd2',
-    },
-    priorityMedium: {
-        backgroundColor: '#fff3cd',
-    },
-    priorityLow: {
-        backgroundColor: '#d4edda',
-    },
-    taskActions: {
+    sortChip: {
         flexDirection: 'row',
-        justifyContent: 'flex-start',
-        marginTop: 8,
-    },
-    fab: {
-        position: 'absolute',
-        margin: 16,
-        right: 0,
-        bottom: 0,
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
         alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: Radii.full,
+        gap: 2,
     },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#333',
-        marginBottom: 8,
-    },
-    emptySubtitle: {
-        fontSize: 14,
-        color: '#666',
-        textAlign: 'center',
-    },
-    errorBox: {
-        backgroundColor: '#ffebee',
-        borderColor: '#ef5350',
-        borderWidth: 1,
-        borderRadius: 8,
-        padding: 12,
-        marginHorizontal: 16,
-        marginVertical: 8,
-    },
-    errorText: {
-        color: '#c62828',
-        fontSize: 13,
+    sortText: {
+        ...Typography.small,
     },
 });

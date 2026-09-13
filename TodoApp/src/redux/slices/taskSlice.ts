@@ -2,12 +2,16 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Task } from '../../types';
 import { apiClient } from '../../services/apiClient';
 
+/** Filter and sort options for the task list */
+export type TaskFilter = 'all' | 'completed' | 'pending' | 'overdue';
+export type TaskSortBy = 'date' | 'priority' | 'deadline';
+
 interface TaskState {
     tasks: Task[];
     loading: boolean;
     error: string | null;
-    filter: 'all' | 'completed' | 'pending';
-    sortBy: 'date' | 'priority' | 'deadline';
+    filter: TaskFilter;
+    sortBy: TaskSortBy;
 }
 
 const initialState: TaskState = {
@@ -109,6 +113,37 @@ export const updateTask = createAsyncThunk(
 );
 
 /**
+ * ASYNC THUNK: Toggle task completion
+ * Convenience wrapper around updateTask for toggling completed state.
+ * Called when: User taps the checkbox on a task card or task detail.
+ */
+export const toggleComplete = createAsyncThunk(
+    'tasks/toggleComplete',
+    async (taskId: string, { getState, rejectWithValue }) => {
+        try {
+            const state = getState() as { tasks: TaskState };
+            const task = state.tasks.tasks.find(t => t.id === taskId);
+
+            if (!task) {
+                return rejectWithValue('Task not found');
+            }
+
+            const result = await apiClient.updateTask(taskId, {
+                completed: !task.completed,
+            });
+
+            if (!result.success) {
+                return rejectWithValue(result.error);
+            }
+
+            return result.data;
+        } catch (error: any) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+/**
  * ASYNC THUNK: Delete task
  * Called when: User deletes task
  */
@@ -138,11 +173,14 @@ const taskSlice = createSlice({
     initialState,
     reducers: {
         // Synchronous actions (don't call API)
-        setFilter: (state, action: PayloadAction<'all' | 'completed' | 'pending'>) => {
+        setFilter: (state, action: PayloadAction<TaskFilter>) => {
             state.filter = action.payload;
         },
-        setSortBy: (state, action: PayloadAction<'date' | 'priority' | 'deadline'>) => {
+        setSortBy: (state, action: PayloadAction<TaskSortBy>) => {
             state.sortBy = action.payload;
+        },
+        clearTaskError: (state) => {
+            state.error = null;
         },
     },
     extraReducers: (builder) => {
@@ -196,6 +234,33 @@ const taskSlice = createSlice({
                 state.error = action.payload as string;
             });
 
+        // TOGGLE COMPLETE — optimistic-like: same pattern as updateTask
+        builder
+            .addCase(toggleComplete.pending, (state, action) => {
+                // Optimistic update: toggle immediately for snappy UX
+                const task = state.tasks.find(t => t.id === action.meta.arg);
+                if (task) {
+                    task.completed = !task.completed;
+                }
+            })
+            .addCase(toggleComplete.fulfilled, (state, action) => {
+                // Replace with server truth
+                const index = state.tasks.findIndex(
+                    (t) => t.id === action.payload.id
+                );
+                if (index !== -1) {
+                    state.tasks[index] = action.payload;
+                }
+            })
+            .addCase(toggleComplete.rejected, (state, action) => {
+                // Revert optimistic update on failure
+                const task = state.tasks.find(t => t.id === action.meta.arg);
+                if (task) {
+                    task.completed = !task.completed;
+                }
+                state.error = action.payload as string;
+            });
+
         // DELETE TASK
         builder
             .addCase(deleteTask.pending, (state) => {
@@ -213,5 +278,5 @@ const taskSlice = createSlice({
     },
 });
 
-export const { setFilter, setSortBy } = taskSlice.actions;
+export const { setFilter, setSortBy, clearTaskError } = taskSlice.actions;
 export default taskSlice.reducer;

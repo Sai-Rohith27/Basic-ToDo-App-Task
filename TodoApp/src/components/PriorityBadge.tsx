@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, Spacing, Radii, Typography } from '../theme';
+import { useTheme, Spacing, Radii, Typography } from '../theme';
 
 interface PriorityBadgeProps {
     priority: 'low' | 'medium' | 'high';
@@ -10,10 +10,17 @@ interface PriorityBadgeProps {
 /**
  * PRIORITY BADGE
  * Small colored pill showing task priority level.
+ * Uses theme context for dark mode support.
  */
 export default function PriorityBadge({ priority, size = 'default' }: PriorityBadgeProps) {
-    const config = PRIORITY_CONFIG[priority];
+    const { colors } = useTheme();
     const isSmall = size === 'small';
+
+    const config = {
+        high: { label: 'High', color: colors.priorityHigh, bg: colors.errorBg },
+        medium: { label: 'Med', color: colors.priorityMedium, bg: colors.warningBg },
+        low: { label: 'Low', color: colors.priorityLow, bg: colors.successBg },
+    }[priority];
 
     return (
         <View style={[
@@ -32,12 +39,6 @@ export default function PriorityBadge({ priority, size = 'default' }: PriorityBa
         </View>
     );
 }
-
-const PRIORITY_CONFIG = {
-    high: { label: 'High', color: Colors.priorityHigh, bg: Colors.errorBg },
-    medium: { label: 'Medium', color: Colors.priorityMedium, bg: Colors.warningBg },
-    low: { label: 'Low', color: Colors.priorityLow, bg: Colors.successBg },
-};
 
 const styles = StyleSheet.create({
     badge: {

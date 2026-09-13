@@ -1,23 +1,31 @@
 import React, { useEffect, useState } from 'react';
+import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { setUser, clearAuth } from '../redux/slices/authSlice';
+import { useTheme } from '../theme';
 
-// Import all screens
+// Auth screens
 import SplashScreen from '../screens/auth/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
-import TaskListScreen from '../screens/tasks/TaskListScreen';
-import AddTaskScreen from '../screens/tasks/AddTaskScreen';
-import EditTaskScreen from '../screens/tasks/EditTaskScreen';
+
+// App navigator (bottom tabs + modals)
+import AppNavigator from './AppNavigator';
 
 const Stack = createNativeStackNavigator();
 
+/**
+ * ROOT NAVIGATOR
+ * Top-level navigator that switches between auth flow and app flow.
+ * Listens to Firebase auth state and updates Redux accordingly.
+ */
 export default function RootNavigator() {
     const dispatch = useAppDispatch();
-    const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+    const { isAuthenticated } = useAppSelector((state) => state.auth);
     const [initializing, setInitializing] = useState(true);
+    const { colors, isDark } = useTheme();
 
     useEffect(() => {
         const checkAuthStatus = async () => {
@@ -46,59 +54,41 @@ export default function RootNavigator() {
         checkAuthStatus();
     }, [dispatch]);
 
+    // Show splash screen while checking auth state
     if (initializing) {
         return (
-            <NavigationContainer>
-                <Stack.Navigator>
-                    <Stack.Screen
-                        name="Splash"
-                        component={SplashScreen}
-                        options={{ headerShown: false }}
-                    />
-                </Stack.Navigator>
-            </NavigationContainer>
+            <>
+                <StatusBar
+                    barStyle={isDark ? 'light-content' : 'dark-content'}
+                    backgroundColor={colors.background}
+                />
+                <NavigationContainer>
+                    <Stack.Navigator screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="Splash" component={SplashScreen} />
+                    </Stack.Navigator>
+                </NavigationContainer>
+            </>
         );
     }
 
     return (
-        <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-                {isAuthenticated ? (
-                    <Stack.Group>
-                        <Stack.Screen
-                            name="TaskList"
-                            component={TaskListScreen}
-                        />
-                        <Stack.Screen
-                            name="AddTask"
-                            component={AddTaskScreen}
-                            options={{
-                                headerShown: true,
-                                title: 'Add Task',
-                            }}
-                        />
-                        <Stack.Screen
-                            name="EditTask"
-                            component={EditTaskScreen}
-                            options={{
-                                headerShown: true,
-                                title: 'Edit Task',
-                            }}
-                        />
-                    </Stack.Group>
-                ) : (
-                    <Stack.Group>
-                        <Stack.Screen
-                            name="Login"
-                            component={LoginScreen}
-                        />
-                        <Stack.Screen
-                            name="Register"
-                            component={RegisterScreen}
-                        />
-                    </Stack.Group>
-                )}
-            </Stack.Navigator>
-        </NavigationContainer>
+        <>
+            <StatusBar
+                barStyle={isDark ? 'light-content' : 'dark-content'}
+                backgroundColor={colors.background}
+            />
+            <NavigationContainer>
+                <Stack.Navigator screenOptions={{ headerShown: false }}>
+                    {isAuthenticated ? (
+                        <Stack.Screen name="App" component={AppNavigator} />
+                    ) : (
+                        <Stack.Group>
+                            <Stack.Screen name="Login" component={LoginScreen} />
+                            <Stack.Screen name="Register" component={RegisterScreen} />
+                        </Stack.Group>
+                    )}
+                </Stack.Navigator>
+            </NavigationContainer>
+        </>
     );
 }
