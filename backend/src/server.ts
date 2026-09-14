@@ -110,11 +110,13 @@ const startServer = async () => {
         // Connect to MongoDB
         await connectDB();
 
-        // Start server
-        app.listen(PORT, () => {
-            console.log(`✓ Server running on http://localhost:${PORT}`);
-            console.log(`✓ API: http://localhost:${PORT}/api/tasks`);
-        });
+        // Start server only if we're not in a serverless environment (Vercel)
+        if (process.env.VERCEL !== '1') {
+            app.listen(PORT, () => {
+                console.log(`✓ Server running on http://localhost:${PORT}`);
+                console.log(`✓ API: http://localhost:${PORT}/api/tasks`);
+            });
+        }
     } catch (error) {
         console.error('Failed to start server:', error);
         process.exit(1);
