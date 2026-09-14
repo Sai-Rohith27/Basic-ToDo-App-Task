@@ -14,17 +14,17 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@types/node": "^22.20.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "firebase-admin": "^14.4.0",
-    "mongoose": "^9.10.0"
+    "mongoose": "^9.10.0",
+    "typescript": "^7.0.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "^22.20.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^7.0.2"
+    "ts-node": "^10.9.2"
   }
 }
