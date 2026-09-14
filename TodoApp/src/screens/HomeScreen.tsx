@@ -9,11 +9,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { fetchTasks, toggleComplete } from '../redux/slices/taskSlice';
-import { useTheme, Spacing, Typography, Radii, Shadows } from '../theme';
+import { useTheme, Spacing, Typography, Radii, Shadows } from '../utils/theme';
 import TaskCard from '../components/TaskCard';
 import EmptyState from '../components/EmptyState';
 import SkeletonLoader from '../components/SkeletonLoader';
 import ProgressRing from '../components/ProgressRing';
+import FloatingActionButton from '../components/FloatingActionButton';
 import { getTaskStats, getProcessedTasks } from '../utils/taskSorter';
 
 /**
@@ -108,12 +109,6 @@ export default function HomeScreen({ navigation }: any) {
                                     {dateString}
                                 </Text>
                             </View>
-                            {/* Avatar placeholder */}
-                            <View style={[styles.avatar, { backgroundColor: colors.primaryBg }]}>
-                                <Text style={[styles.avatarText, { color: colors.primary }]}>
-                                    {displayName.charAt(0).toUpperCase()}
-                                </Text>
-                            </View>
                         </View>
 
                         {/* ── Stats Card ── */}
@@ -205,11 +200,16 @@ export default function HomeScreen({ navigation }: any) {
                             title="You're all caught up!"
                             subtitle="Your schedule is clear. Add a task and start making progress."
                             actionLabel="Add Your First Task"
-                            onAction={() => navigation.navigate('AddTab')}
+                            onAction={() => navigation.navigate('AddTask')}
                         />
                     ) : null
                 }
                 showsVerticalScrollIndicator={false}
+            />
+
+            <FloatingActionButton
+                onPress={() => navigation.navigate('AddTask')}
+                icon="plus"
             />
         </View>
     );
@@ -243,18 +243,6 @@ const styles = StyleSheet.create({
     },
     date: {
         ...Typography.caption,
-    },
-    avatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: Spacing.md,
-    },
-    avatarText: {
-        fontSize: 18,
-        fontWeight: '700',
     },
 
     // ── Stats Card ──

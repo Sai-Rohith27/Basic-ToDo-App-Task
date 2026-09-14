@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useTheme, Spacing, Radii, Typography } from '../theme';
+import { useTheme, Spacing, Radii, Typography } from '../utils/theme';
 
 interface PriorityBadgeProps {
     priority: 'low' | 'medium' | 'high';

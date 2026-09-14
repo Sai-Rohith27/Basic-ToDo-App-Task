@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, Spacing, Typography } from '../theme';
+import { Colors, Spacing, Typography } from '../utils/theme';
 
 interface PasswordStrengthProps {
     password: string;

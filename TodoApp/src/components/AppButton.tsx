@@ -8,9 +8,9 @@ import {
     TextStyle,
     Animated,
 } from 'react-native';
-import { useTheme, Spacing, Radii, Typography, Layout, Shadows, AnimDuration } from '../theme';
+import { useTheme, Spacing, Radii, Typography, Layout, Shadows, AnimDuration } from '../utils/theme';
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
 
 interface AppButtonProps {
     title: string;
@@ -22,6 +22,7 @@ interface AppButtonProps {
     style?: ViewStyle;
     textStyle?: TextStyle;
     fullWidth?: boolean;
+    shape?: 'default' | 'pill';
 }
 
 /**
@@ -39,6 +40,7 @@ export default function AppButton({
     style,
     textStyle,
     fullWidth = true,
+    shape = 'default',
 }: AppButtonProps) {
     const { colors } = useTheme();
     const isDisabled = disabled || loading;
@@ -79,6 +81,7 @@ export default function AppButton({
                 accessibilityState={{ disabled: isDisabled }}
                 style={[
                     styles.button,
+                    shape === 'pill' ? { borderRadius: Radii.full } : { borderRadius: Radii.md },
                     variantStyles.container,
                     fullWidth && styles.fullWidth,
                     isDisabled && styles.disabled,
@@ -153,13 +156,24 @@ function getVariantStyles(variant: ButtonVariant, disabled: boolean, colors: any
                 } as TextStyle,
                 loaderColor: colors.primary,
             };
+        case 'outline':
+            return {
+                container: {
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                } as ViewStyle,
+                text: {
+                    color: colors.textPrimary,
+                } as TextStyle,
+                loaderColor: colors.textPrimary,
+            };
     }
 }
 
 const styles = StyleSheet.create({
     button: {
         height: Layout.buttonHeight,
-        borderRadius: Radii.md,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

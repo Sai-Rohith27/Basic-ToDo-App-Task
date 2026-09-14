@@ -1,230 +1,169 @@
-import React, { useState } from 'react';
-import {
-    View,
-    StyleSheet,
-    ScrollView,
-    KeyboardAvoidingView,
-    Platform,
-} from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView, Animated, Image, useWindowDimensions } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppDispatch } from '../../redux/hooks';
-import { setUser, setAuthError } from '../../redux/slices/authSlice';
 import { registerUser } from '../../services/firebaseAuth';
-import { Colors, Spacing, Typography, Layout, Radii } from '../../theme';
 import AppInput from '../../components/AppInput';
 import AppButton from '../../components/AppButton';
 import PasswordStrength from '../../components/PasswordStrength';
+import { useTheme, Spacing, Typography, Layout, Radii } from '../../theme';
 
-/**
- * REGISTER SCREEN
- * User creates new account with email & password.
- * Preserves existing Firebase auth logic and validation — only UI is redesigned.
- */
+const HERO_IMAGE_URL = { uri: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?q=80&w=1000&auto=format&fit=crop' };
+
 export default function RegisterScreen({ navigation }: any) {
-    // Form state
+    const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
+    const { width } = useWindowDimensions();
+
+    const isLargeScreen = width > 768;
+
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Field-level touch tracking
-    const [emailTouched, setEmailTouched] = useState(false);
-    const [confirmTouched, setConfirmTouched] = useState(false);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
 
-    const dispatch = useAppDispatch();
-    const insets = useSafeAreaInsets();
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.spring(slideAnim, { toValue: 0, tension: 40, friction: 8, useNativeDriver: true }),
+        ]).start();
+    }, []);
 
-    // ── Inline Validators ──
-
-    const getEmailError = (): string | undefined => {
-        if (!emailTouched || !email) return undefined;
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) return 'Enter a valid email address';
-        return undefined;
-    };
-
-    const getConfirmError = (): string | undefined => {
-        if (!confirmTouched || !confirmPassword) return undefined;
-        if (password !== confirmPassword) return 'Passwords do not match';
-        return undefined;
-    };
-
-    /**
-     * VALIDATE PASSWORD
-     * Checks if password meets requirements.
-     * (Existing logic preserved exactly)
-     */
-    const validatePassword = (pwd: string): string | null => {
-        if (pwd.length < 6) {
-            return 'Password must be at least 6 characters';
-        }
-        if (!/[A-Z]/.test(pwd)) {
-            return 'Password must contain uppercase letter';
-        }
-        if (!/[0-9]/.test(pwd)) {
-            return 'Password must contain number';
-        }
-        return null;
-    };
-
-    /**
-     * HANDLE REGISTER
-     * Called when user presses "Sign Up" button.
-     * (Existing logic preserved exactly)
-     */
     const handleRegister = async () => {
-        // Validate all fields filled
-        if (!email || !password || !confirmPassword) {
+        if (!name || !email || !password || !confirmPassword) {
             setError('Please fill in all fields');
             return;
         }
 
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            setError('Please enter valid email');
-            return;
-        }
-
-        // Validate passwords match
         if (password !== confirmPassword) {
             setError('Passwords do not match');
             return;
         }
 
-        // Validate password strength
-        const passwordError = validatePassword(password);
-        if (passwordError) {
-            setError(passwordError);
-            return;
+        try {
+            setLoading(true);
+            setError('');
+            const result = await registerUser(email, password, name);
+            if (!result.success) {
+                setError(result.error || 'Registration failed');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Registration failed');
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(true);
-        setError('');
-
-        // Call Firebase auth function
-        const result = await registerUser(email, password);
-
-        if (result.success && result.user) {
-            // Registration successful - update Redux
-            dispatch(setUser(result.user));
-            // Navigation happens automatically (RootNavigator sees isAuthenticated = true)
-        } else {
-            // Registration failed - show error
-            setError(result.error || 'Registration failed');
-            dispatch(setAuthError(result.error || 'Registration failed'));
-        }
-
-        setLoading(false);
     };
+
 
     return (
         <KeyboardAvoidingView
+            style={[styles.container, { backgroundColor: colors.background }]}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
         >
-            <ScrollView
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    { paddingTop: insets.top + Spacing.xxl },
-                ]}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-            >
-                {/* ── Branding Header ── */}
-                <View style={styles.header}>
-                    <View style={styles.logoContainer}>
-                        <Text style={styles.logoIcon}>✓</Text>
-                    </View>
-                    <Text style={styles.appName}>Taskly</Text>
-                    <Text style={styles.tagline}>Start getting things done.</Text>
+            <View style={[styles.layoutWrapper, isLargeScreen && styles.layoutRow]}>
+
+                {/* Hero Image Section */}
+                <View style={[styles.imageContainer, isLargeScreen ? styles.imageContainerLarge : styles.imageContainerSmall]}>
+                    <Image source={HERO_IMAGE_URL} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                    <View style={StyleSheet.absoluteFill} /> {/* Overlay placeholder if needed */}
                 </View>
 
-                {/* ── Form Card ── */}
-                <View style={styles.formCard}>
-                    <Text style={styles.formTitle}>Create Account</Text>
-                    <Text style={styles.formSubtitle}>Sign up to get started</Text>
+                {/* Form Section */}
+                <ScrollView
+                    contentContainerStyle={[
+                        styles.formScrollContainer,
+                        !isLargeScreen && { paddingTop: Spacing.huge, paddingBottom: Math.max(insets.bottom, Spacing.xl) },
+                        isLargeScreen && { paddingVertical: Spacing.huge }
+                    ]}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <Animated.View style={[styles.formContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
-                    {/* Error Banner */}
-                    {error ? (
-                        <View style={styles.errorBanner}>
-                            <Text style={styles.errorIcon}>⚠</Text>
-                            <Text style={styles.errorText}>{error}</Text>
+                        <View style={styles.header}>
+                            <Text style={[styles.title, { color: colors.textPrimary }]}>Create Account</Text>
+                            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                                Join us to start organizing your life.
+                            </Text>
                         </View>
-                    ) : null}
 
-                    {/* Email Input */}
-                    <AppInput
-                        label="Email"
-                        value={email}
-                        onChangeText={(text) => {
-                            setEmail(text);
-                            setError('');
-                        }}
-                        leftIcon="email-outline"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        disabled={loading}
-                        error={getEmailError()}
-                        onBlur={() => setEmailTouched(true)}
-                    />
+                        <View style={styles.formGroup}>
+                            <AppInput
+                                label="Full Name"
+                                value={name}
+                                onChangeText={(t) => { setName(t); setError(''); }}
+                                autoCapitalize="words"
+                                leftIcon="account-outline"
+                                variant="pill"
+                            />
 
-                    {/* Password Input */}
-                    <AppInput
-                        label="Password"
-                        value={password}
-                        onChangeText={(text) => {
-                            setPassword(text);
-                            setError('');
-                        }}
-                        leftIcon="lock-outline"
-                        secureTextEntry
-                        showToggle
-                        disabled={loading}
-                    />
+                            <AppInput
+                                label="Email Address"
+                                value={email}
+                                onChangeText={(t) => { setEmail(t); setError(''); }}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                leftIcon="email-outline"
+                                variant="pill"
+                            />
 
-                    {/* Live Password Strength Indicator */}
-                    <PasswordStrength password={password} />
+                            <View>
+                                <AppInput
+                                    label="Password"
+                                    value={password}
+                                    onChangeText={(t) => { setPassword(t); setError(''); }}
+                                    secureTextEntry
+                                    showToggle
+                                    leftIcon="lock-outline"
+                                    variant="pill"
+                                />
+                                <View style={styles.strengthContainer}>
+                                    <PasswordStrength password={password} />
+                                </View>
+                            </View>
 
-                    {/* Confirm Password Input */}
-                    <AppInput
-                        label="Confirm Password"
-                        value={confirmPassword}
-                        onChangeText={(text) => {
-                            setConfirmPassword(text);
-                            setError('');
-                        }}
-                        leftIcon="lock-check-outline"
-                        secureTextEntry
-                        showToggle
-                        disabled={loading}
-                        error={getConfirmError()}
-                        onBlur={() => setConfirmTouched(true)}
-                    />
+                            <AppInput
+                                label="Confirm Password"
+                                value={confirmPassword}
+                                onChangeText={(t) => { setConfirmPassword(t); setError(''); }}
+                                secureTextEntry
+                                showToggle
+                                leftIcon="lock-check-outline"
+                                variant="pill"
+                            />
 
-                    {/* Sign Up Button */}
-                    <AppButton
-                        title={loading ? 'Creating account...' : 'Create Account'}
-                        onPress={handleRegister}
-                        loading={loading}
-                        disabled={loading}
-                        style={styles.signUpButton}
-                    />
-                </View>
+                            {error ? (
+                                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+                            ) : null}
 
-                {/* ── Footer ── */}
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>Already have an account? </Text>
-                    <Text
-                        style={styles.footerLink}
-                        onPress={() => navigation.navigate('Login')}
-                    >
-                        Sign In
-                    </Text>
-                </View>
-            </ScrollView>
+                            <AppButton
+                                title="Sign Up"
+                                onPress={handleRegister}
+                                loading={loading}
+                                style={styles.mainButton}
+                                shape="pill"
+                            />
+                        </View>
+
+
+
+                        <View style={styles.footer}>
+                            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                                Already have an account?{' '}
+                            </Text>
+                            <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={{ paddingVertical: 4 }}>
+                                <Text style={[styles.link, { color: colors.primary }]}>Sign In</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                    </Animated.View>
+                </ScrollView>
+            </View>
         </KeyboardAvoidingView>
     );
 }
@@ -232,102 +171,89 @@ export default function RegisterScreen({ navigation }: any) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
     },
-    scrollContent: {
-        flexGrow: 1,
-        paddingHorizontal: Layout.screenPaddingH,
-        paddingBottom: Spacing.xxxl,
+    layoutWrapper: {
+        flex: 1,
+        flexDirection: 'column',
     },
-
-    // ── Header / Branding ──
-    header: {
-        alignItems: 'center',
-        marginBottom: Spacing.xxl,
-    },
-    logoContainer: {
-        width: 64,
-        height: 64,
-        borderRadius: 18,
-        backgroundColor: Colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: Spacing.md,
-    },
-    logoIcon: {
-        fontSize: 28,
-        color: Colors.textInverse,
-        fontWeight: '700',
-    },
-    appName: {
-        ...Typography.h1,
-        color: Colors.primary,
-        marginBottom: Spacing.xs,
-    },
-    tagline: {
-        ...Typography.caption,
-        color: Colors.textSecondary,
-    },
-
-    // ── Form Card ──
-    formCard: {
-        backgroundColor: Colors.surface,
-        borderRadius: Radii.xl,
-        padding: Spacing.xxl,
-        maxWidth: Layout.maxFormWidth,
-        width: '100%',
-        alignSelf: 'center',
-        borderWidth: 1,
-        borderColor: Colors.borderLight,
-    },
-    formTitle: {
-        ...Typography.h2,
-        color: Colors.textPrimary,
-        marginBottom: Spacing.xs,
-    },
-    formSubtitle: {
-        ...Typography.body,
-        color: Colors.textSecondary,
-        marginBottom: Spacing.xxl,
-    },
-
-    // ── Error Banner ──
-    errorBanner: {
+    layoutRow: {
         flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: Colors.errorBg,
-        borderRadius: Radii.sm,
-        padding: Spacing.md,
-        marginBottom: Spacing.lg,
+    },
+    imageContainer: {
+        width: '100%',
+        overflow: 'hidden',
+    },
+    imageContainerSmall: {
+        height: '30%',
+        borderBottomLeftRadius: Radii.xl,
+        borderBottomRightRadius: Radii.xl,
+    },
+    imageContainerLarge: {
+        flex: 1,
+        height: '100%',
+        borderTopRightRadius: 32,
+        borderBottomRightRadius: 32,
+    },
+    formScrollContainer: {
+        flexGrow: 1,
+        justifyContent: 'center',
+    },
+    formContent: {
+        width: '100%',
+        maxWidth: 440,
+        alignSelf: 'center',
+        paddingHorizontal: Layout.screenPaddingH,
+    },
+    header: {
+        marginBottom: Spacing.xxxl,
+    },
+    title: {
+        fontSize: 32,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+        marginBottom: Spacing.xs,
+    },
+    subtitle: {
+        ...Typography.body,
+    },
+    formGroup: {
         gap: Spacing.sm,
     },
-    errorIcon: {
-        fontSize: 16,
+    strengthContainer: {
+        marginTop: Spacing.xs,
+        paddingHorizontal: Spacing.xs,
+    },
+    mainButton: {
+        marginTop: Spacing.md,
     },
     errorText: {
         ...Typography.caption,
-        color: Colors.error,
+        textAlign: 'center',
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: Spacing.xxl,
+    },
+    dividerLine: {
         flex: 1,
+        height: 1,
     },
-
-    // ── Button ──
-    signUpButton: {
-        marginTop: Spacing.sm,
+    dividerText: {
+        ...Typography.captionMedium,
+        marginHorizontal: Spacing.md,
     },
-
-    // ── Footer ──
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: Spacing.xxl,
-        paddingBottom: Spacing.lg,
+        alignItems: 'center',
+        marginTop: Spacing.xxxl,
     },
     footerText: {
         ...Typography.body,
-        color: Colors.textSecondary,
     },
-    footerLink: {
-        ...Typography.bodyMedium,
-        color: Colors.primary,
+    link: {
+        ...Typography.body,
+        fontWeight: '700',
     },
 });

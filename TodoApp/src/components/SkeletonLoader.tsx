@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
-import { useTheme } from '../theme';
+import { useTheme } from '../utils/theme';
 
 interface SkeletonLoaderProps {
     /** Number of skeleton task rows to show */

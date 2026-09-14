@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { useTheme } from '../theme';
+import { useTheme } from '../utils/theme';
 
 interface ProgressRingProps {
     /** Progress percentage (0–100) */
@@ -58,7 +58,7 @@ export default function ProgressRing({
                                             rotate: `${clampedProgress <= 50
                                                 ? `${(clampedProgress / 50) * 180}deg`
                                                 : '180deg'
-                                            }`,
+                                                }`,
                                         },
                                     ],
                                 },

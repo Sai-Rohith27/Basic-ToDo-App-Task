@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useTheme, Spacing, Radii, Typography } from '../theme';
+import { useTheme, Spacing, Radii, Typography } from '../utils/theme';
 
 interface PrioritySelectorProps {
     value: 'low' | 'medium' | 'high';
@@ -26,10 +26,10 @@ export default function PrioritySelector({
         color: string;
         bg: string;
     }[] = [
-        { key: 'low', label: 'Low', color: colors.priorityLow, bg: colors.successBg },
-        { key: 'medium', label: 'Medium', color: colors.priorityMedium, bg: colors.warningBg },
-        { key: 'high', label: 'High', color: colors.priorityHigh, bg: colors.errorBg },
-    ];
+            { key: 'low', label: 'Low', color: colors.priorityLow, bg: colors.successBg },
+            { key: 'medium', label: 'Medium', color: colors.priorityMedium, bg: colors.warningBg },
+            { key: 'high', label: 'High', color: colors.priorityHigh, bg: colors.errorBg },
+        ];
 
     return (
         <View style={styles.container}>

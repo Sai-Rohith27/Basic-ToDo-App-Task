@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { setUser, clearAuth } from '../redux/slices/authSlice';
-import { useTheme } from '../theme';
+import { useTheme } from '../utils/theme';
 
 // Auth screens
 import SplashScreen from '../screens/auth/SplashScreen';

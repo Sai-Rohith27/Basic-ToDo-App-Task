@@ -1,10 +1,10 @@
 import React from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
-import { TextInput, Text } from 'react-native-paper';
-import { useTheme, Spacing, Radii, Typography, Layout } from '../theme';
+import { StyleSheet, View, ViewStyle, TextInput as RNTextInput } from 'react-native';
+import { TextInput, Text, IconButton } from 'react-native-paper';
+import { useTheme, Spacing, Radii, Typography, Layout } from '../utils/theme';
 
 interface AppInputProps {
-    label: string;
+    label?: string;
     value: string;
     onChangeText: (text: string) => void;
     placeholder?: string;
@@ -19,13 +19,12 @@ interface AppInputProps {
     numberOfLines?: number;
     style?: ViewStyle;
     onBlur?: () => void;
+    variant?: 'default' | 'pill'; // Added variant support
 }
 
 /**
  * APP INPUT
  * Themed text input with icon support, password toggle, and inline error.
- * Wraps React Native Paper TextInput for consistent styling.
- * Uses theme context for dark mode support.
  */
 export default function AppInput({
     label,
@@ -43,9 +42,72 @@ export default function AppInput({
     numberOfLines = 1,
     style,
     onBlur,
+    variant = 'default',
 }: AppInputProps) {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const [isSecure, setIsSecure] = React.useState(secureTextEntry);
+    const [isFocused, setIsFocused] = React.useState(false);
+
+    if (variant === 'pill') {
+        const inputBg = isDark ? '#1C1C1E' : '#F1F5F9';
+        const borderColor = error ? colors.error : (isFocused ? colors.primary : 'transparent');
+
+        return (
+            <View style={[styles.wrapper, style]}>
+                <View
+                    style={[
+                        styles.pillContainer,
+                        {
+                            backgroundColor: inputBg,
+                            borderColor,
+                            borderWidth: 1,
+                        }
+                    ]}
+                >
+                    {leftIcon && (
+                        <View style={styles.pillIconLeft}>
+                            <IconButton icon={leftIcon} size={20} iconColor={colors.textTertiary} style={{ margin: 0 }} />
+                        </View>
+                    )}
+                    <RNTextInput
+                        value={value}
+                        onChangeText={onChangeText}
+                        placeholder={placeholder || label}
+                        placeholderTextColor={colors.textTertiary}
+                        secureTextEntry={isSecure}
+                        keyboardType={keyboardType}
+                        autoCapitalize={autoCapitalize}
+                        editable={!disabled}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={() => {
+                            setIsFocused(false);
+                            onBlur?.();
+                        }}
+                        style={[
+                            styles.pillInput,
+                            { color: colors.textPrimary },
+                            leftIcon ? { paddingLeft: 0 } : { paddingLeft: Spacing.xl },
+                            showToggle ? { paddingRight: 0 } : { paddingRight: Spacing.xl },
+                        ]}
+                    />
+                    {showToggle && (
+                        <View style={styles.pillIconRight}>
+                            <IconButton
+                                icon={isSecure ? 'eye-off-outline' : 'eye-outline'}
+                                size={20}
+                                iconColor={colors.textTertiary}
+                                onPress={() => setIsSecure(!isSecure)}
+                                style={{ margin: 0 }}
+                            />
+                        </View>
+                    )}
+                </View>
+                {error ? (
+                    <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+                ) : null}
+            </View>
+        );
+    }
 
     return (
         <View style={[styles.wrapper, style]}>
@@ -72,19 +134,19 @@ export default function AppInput({
                         />
                     ) : undefined
                 }
-                outlineColor={error ? colors.error : colors.border}
+                outlineColor={error ? colors.error : 'transparent'}
                 activeOutlineColor={error ? colors.error : colors.primary}
                 outlineStyle={styles.outline}
                 textColor={colors.textPrimary}
                 style={[
                     styles.input,
-                    { backgroundColor: colors.surface },
+                    { backgroundColor: colors.surfaceAlt },
                     multiline && { height: numberOfLines * 22 + 32, textAlignVertical: 'top' as const },
                 ]}
                 theme={{
                     roundness: Radii.md,
                     colors: {
-                        background: colors.surface,
+                        background: colors.surfaceAlt,
                         text: colors.textPrimary,
                         placeholder: colors.textTertiary,
                         onSurfaceVariant: colors.textSecondary,
@@ -106,11 +168,36 @@ const styles = StyleSheet.create({
         fontSize: Typography.body.fontSize,
     },
     outline: {
-        borderWidth: 1.5,
+        borderWidth: 1,
     },
     errorText: {
         ...Typography.caption,
         marginTop: Spacing.xs,
         marginLeft: Spacing.xs,
+    },
+    // Pill Variant Styles
+    pillContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 56,
+        borderRadius: Radii.full,
+        overflow: 'hidden',
+    },
+    pillInput: {
+        flex: 1,
+        height: '100%',
+        ...Typography.body,
+    },
+    pillIconLeft: {
+        width: 52,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pillIconRight: {
+        width: 52,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

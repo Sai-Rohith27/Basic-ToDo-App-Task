@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { IconButton } from 'react-native-paper';
-import { useTheme, Spacing, Typography } from '../theme';
+import { useTheme, Spacing, Typography } from '../utils/theme';
 import AppButton from './AppButton';
 
 interface EmptyStateProps {

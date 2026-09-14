@@ -1,29 +1,62 @@
-import React from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, ActivityIndicator, Animated } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Colors, Typography, Spacing } from '../../theme';
+import { useTheme, Spacing, Typography } from '../../utils/theme';
 
 /**
  * SPLASH SCREEN
- * Shows while app is loading/checking auth status.
- * Branded to match the login/register screens.
+ * Shown while Firebase auth state is being resolved
  */
 export default function SplashScreen() {
+    const { colors } = useTheme();
+
+    // Animation values
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const scaleAnim = useRef(new Animated.Value(0.8)).current;
+    const loaderFadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        // Start entrance animation
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+            }),
+        ]).start(() => {
+            // Fade in loader after logo appears
+            Animated.timing(loaderFadeAnim, {
+                toValue: 1,
+                duration: 400,
+                useNativeDriver: true,
+            }).start();
+        });
+    }, [fadeAnim, scaleAnim, loaderFadeAnim]);
+
     return (
-        <View style={styles.container}>
-            {/* App Logo */}
-            <View style={styles.logoContainer}>
-                <Text style={styles.logoIcon}>✓</Text>
-            </View>
+        <View style={[styles.container, { backgroundColor: colors.primary }]}>
+            <Animated.View
+                style={[
+                    styles.logoContainer,
+                    {
+                        opacity: fadeAnim,
+                        transform: [{ scale: scaleAnim }],
+                    },
+                ]}
+            >
+                <Text style={[styles.title, { color: colors.white }]}>Taskly</Text>
+            </Animated.View>
 
-            <Text style={styles.appName}>Taskly</Text>
-            <Text style={styles.tagline}>Organize your day, own your goals.</Text>
-
-            <ActivityIndicator
-                size="large"
-                color={Colors.primary}
-                style={styles.loader}
-            />
+            <Animated.View style={[styles.loaderContainer, { opacity: loaderFadeAnim }]}>
+                <ActivityIndicator size="large" color={colors.white} style={styles.loader} />
+                <Text style={[styles.subtitle, { color: colors.white }]}>Starting up...</Text>
+            </Animated.View>
         </View>
     );
 }
@@ -31,34 +64,29 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: Colors.background,
+        justifyContent: 'center',
     },
     logoContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 22,
-        backgroundColor: Colors.primary,
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.xxxl,
     },
-    logoIcon: {
-        fontSize: 36,
-        color: Colors.textInverse,
-        fontWeight: '700',
+    title: {
+        fontSize: 56,
+        fontWeight: '900',
+        letterSpacing: -1.5,
     },
-    appName: {
-        ...Typography.h1,
-        color: Colors.primary,
-        marginBottom: Spacing.xs,
-    },
-    tagline: {
-        ...Typography.caption,
-        color: Colors.textSecondary,
+    loaderContainer: {
+        position: 'absolute',
+        bottom: 120,
+        alignItems: 'center',
     },
     loader: {
-        marginTop: Spacing.xxxl,
+        marginBottom: Spacing.lg,
+    },
+    subtitle: {
+        ...Typography.bodyMedium,
+        opacity: 0.9,
+        fontWeight: '500',
     },
 });

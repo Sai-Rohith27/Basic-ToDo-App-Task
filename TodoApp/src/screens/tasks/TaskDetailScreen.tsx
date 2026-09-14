@@ -3,29 +3,28 @@ import {
     View,
     StyleSheet,
     ScrollView,
-    TouchableOpacity,
     Alert,
     Platform,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-import { toggleComplete, deleteTask, updateTask } from '../../redux/slices/taskSlice';
-import { Colors, Spacing, Typography, Radii, Shadows, Layout } from '../../theme';
+import { toggleComplete, deleteTask } from '../../redux/slices/taskSlice';
+import { useTheme, Spacing, Typography, Radii, Shadows, Layout } from '../../utils/theme';
 import AppButton from '../../components/AppButton';
 import PriorityBadge from '../../components/PriorityBadge';
-import { Task } from '../../types';
 
 /**
  * TASK DETAIL SCREEN
  * Displays full task information with actions:
- * mark complete, edit (inline), delete (with confirmation).
- *
- * Receives taskId via route params, reads from Redux store.
+ * mark complete, edit, delete (with confirmation).
+ * Now fully theme-aware for dark mode.
  */
 export default function TaskDetailScreen({ route, navigation }: any) {
     const { taskId } = route.params;
     const dispatch = useAppDispatch();
+    const { colors } = useTheme();
+
     const task = useAppSelector((state) =>
         state.tasks.tasks.find((t) => t.id === taskId)
     );
@@ -35,9 +34,9 @@ export default function TaskDetailScreen({ route, navigation }: any) {
     // If task was deleted or not found, go back
     if (!task) {
         return (
-            <View style={styles.container}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={styles.notFound}>
-                    <Text style={styles.notFoundText}>Task not found</Text>
+                    <Text style={[styles.notFoundText, { color: colors.textSecondary }]}>Task not found</Text>
                     <AppButton
                         title="Go Back"
                         onPress={() => navigation.goBack()}
@@ -78,15 +77,17 @@ export default function TaskDetailScreen({ route, navigation }: any) {
 
     // ── Handlers ──
     const handleToggleComplete = () => {
-        dispatch(toggleComplete(task.id));
+        dispatch(toggleComplete({ taskId: task.id, completed: !task.completed }) as any);
+    };
+
+    const handleEdit = () => {
+        navigation.navigate('EditTask', { taskId: task.id });
     };
 
     const handleDelete = () => {
         if (Platform.OS === 'web') {
-            // Web: use simple confirm
             setShowDeleteConfirm(true);
         } else {
-            // Native: use Alert
             Alert.alert(
                 'Delete Task',
                 `Are you sure you want to delete "${task.title}"? This action cannot be undone.`,
@@ -96,7 +97,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
                         text: 'Delete',
                         style: 'destructive',
                         onPress: () => {
-                            dispatch(deleteTask(task.id));
+                            dispatch(deleteTask(task.id) as any);
                             navigation.goBack();
                         },
                     },
@@ -106,57 +107,75 @@ export default function TaskDetailScreen({ route, navigation }: any) {
     };
 
     const confirmDelete = () => {
-        dispatch(deleteTask(task.id));
+        dispatch(deleteTask(task.id) as any);
         navigation.goBack();
     };
 
     return (
         <ScrollView
-            style={styles.container}
+            style={[styles.container, { backgroundColor: colors.background }]}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
         >
             {/* ── Status Banner ── */}
             <View style={[
                 styles.statusBanner,
-                task.completed ? styles.statusCompleted : isOverdue ? styles.statusOverdue : styles.statusPending,
+                {
+                    backgroundColor: task.completed ? colors.successBg : isOverdue ? colors.errorBg : colors.warningBg
+                }
             ]}>
                 <Text style={styles.statusIcon}>
                     {task.completed ? '✓' : isOverdue ? '⚠' : '⏱'}
                 </Text>
-                <Text style={styles.statusText}>
+                <Text style={[styles.statusText, { color: task.completed ? colors.success : isOverdue ? colors.error : colors.warning }]}>
                     {formatRelativeDeadline(task.deadline)}
                 </Text>
             </View>
 
             {/* ── Title & Priority ── */}
             <View style={styles.titleSection}>
-                <Text style={[
-                    styles.title,
-                    task.completed && styles.titleCompleted,
-                ]}>
-                    {task.title}
-                </Text>
-                <PriorityBadge priority={task.priority} />
+                <View style={{ flex: 1 }}>
+                    <Text style={[
+                        styles.title,
+                        { color: task.completed ? colors.textTertiary : colors.textPrimary },
+                        task.completed && styles.titleCompleted,
+                    ]}>
+                        {task.title}
+                    </Text>
+                    <View style={styles.priorityWrapper}>
+                        <PriorityBadge priority={task.priority} />
+                    </View>
+                </View>
+                <IconButton
+                    icon="pencil"
+                    iconColor={colors.primary}
+                    size={24}
+                    onPress={handleEdit}
+                    style={styles.editButton}
+                />
             </View>
 
             {/* ── Description ── */}
             {task.description ? (
                 <View style={styles.section}>
-                    <Text style={styles.sectionLabel}>Description</Text>
-                    <Text style={styles.descriptionText}>{task.description}</Text>
+                    <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>Description</Text>
+                    <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>{task.description}</Text>
                 </View>
             ) : null}
 
             {/* ── Details Grid ── */}
-            <View style={styles.detailsCard}>
+            <View style={[
+                styles.detailsCard,
+                { backgroundColor: colors.surface, borderColor: colors.borderLight }
+            ]}>
                 <DetailRow
                     icon="📅"
                     label="Deadline"
                     value={formatFullDate(task.deadline)}
                     highlight={isOverdue}
+                    colors={colors}
                 />
-                <View style={styles.detailDivider} />
+                <View style={[styles.detailDivider, { backgroundColor: colors.borderLight }]} />
 
                 {task.category ? (
                     <>
@@ -164,8 +183,9 @@ export default function TaskDetailScreen({ route, navigation }: any) {
                             icon="🏷️"
                             label="Category"
                             value={task.category}
+                            colors={colors}
                         />
-                        <View style={styles.detailDivider} />
+                        <View style={[styles.detailDivider, { backgroundColor: colors.borderLight }]} />
                     </>
                 ) : null}
 
@@ -173,22 +193,25 @@ export default function TaskDetailScreen({ route, navigation }: any) {
                     icon="📋"
                     label="Status"
                     value={task.completed ? 'Completed' : 'Pending'}
+                    colors={colors}
                 />
-                <View style={styles.detailDivider} />
+                <View style={[styles.detailDivider, { backgroundColor: colors.borderLight }]} />
 
                 <DetailRow
                     icon="🕐"
                     label="Created"
                     value={formatFullDate(task.createdAt)}
+                    colors={colors}
                 />
 
                 {task.updatedAt !== task.createdAt && (
                     <>
-                        <View style={styles.detailDivider} />
+                        <View style={[styles.detailDivider, { backgroundColor: colors.borderLight }]} />
                         <DetailRow
                             icon="✏️"
                             label="Last Updated"
                             value={formatFullDate(task.updatedAt)}
+                            colors={colors}
                         />
                     </>
                 )}
@@ -200,23 +223,22 @@ export default function TaskDetailScreen({ route, navigation }: any) {
                     title={task.completed ? 'Mark as Pending' : 'Mark as Complete'}
                     onPress={handleToggleComplete}
                     variant={task.completed ? 'secondary' : 'primary'}
-                    style={styles.actionButton}
                 />
 
                 <AppButton
                     title="Delete Task"
                     onPress={handleDelete}
-                    variant="danger"
-                    style={styles.actionButton}
+                    variant="ghost"
+                    textStyle={{ color: colors.error }}
                 />
             </View>
 
             {/* ── Delete Confirmation (Web fallback) ── */}
             {showDeleteConfirm && (
-                <View style={styles.confirmOverlay}>
-                    <View style={styles.confirmCard}>
-                        <Text style={styles.confirmTitle}>Delete Task?</Text>
-                        <Text style={styles.confirmMessage}>
+                <View style={[styles.confirmOverlay, { backgroundColor: colors.overlay }]}>
+                    <View style={[styles.confirmCard, { backgroundColor: colors.surface }]}>
+                        <Text style={[styles.confirmTitle, { color: colors.textPrimary }]}>Delete Task?</Text>
+                        <Text style={[styles.confirmMessage, { color: colors.textSecondary }]}>
                             Are you sure you want to delete "{task.title}"?{'\n'}
                             This action cannot be undone.
                         </Text>
@@ -247,19 +269,22 @@ function DetailRow({
     label,
     value,
     highlight = false,
+    colors
 }: {
     icon: string;
     label: string;
     value: string;
     highlight?: boolean;
+    colors: any;
 }) {
     return (
         <View style={detailStyles.row}>
             <Text style={detailStyles.icon}>{icon}</Text>
             <View style={detailStyles.content}>
-                <Text style={detailStyles.label}>{label}</Text>
+                <Text style={[detailStyles.label, { color: colors.textTertiary }]}>{label}</Text>
                 <Text style={[
                     detailStyles.value,
+                    { color: highlight ? colors.error : colors.textPrimary },
                     highlight && detailStyles.valueHighlight,
                 ]}>
                     {value}
@@ -285,15 +310,12 @@ const detailStyles = StyleSheet.create({
     },
     label: {
         ...Typography.small,
-        color: Colors.textTertiary,
         marginBottom: 2,
     },
     value: {
         ...Typography.body,
-        color: Colors.textPrimary,
     },
     valueHighlight: {
-        color: Colors.error,
         fontWeight: '600',
     },
 });
@@ -301,7 +323,6 @@ const detailStyles = StyleSheet.create({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
     },
     scrollContent: {
         padding: Layout.screenPaddingH,
@@ -318,21 +339,11 @@ const styles = StyleSheet.create({
         borderRadius: Radii.md,
         marginBottom: Spacing.xl,
     },
-    statusCompleted: {
-        backgroundColor: Colors.successBg,
-    },
-    statusOverdue: {
-        backgroundColor: Colors.errorBg,
-    },
-    statusPending: {
-        backgroundColor: Colors.warningBg,
-    },
     statusIcon: {
         fontSize: 16,
     },
     statusText: {
         ...Typography.captionMedium,
-        color: Colors.textPrimary,
     },
 
     // ── Title ──
@@ -345,12 +356,17 @@ const styles = StyleSheet.create({
     },
     title: {
         ...Typography.h1,
-        color: Colors.textPrimary,
-        flex: 1,
+        marginBottom: Spacing.xs,
     },
     titleCompleted: {
         textDecorationLine: 'line-through',
-        color: Colors.textTertiary,
+    },
+    priorityWrapper: {
+        alignSelf: 'flex-start',
+    },
+    editButton: {
+        margin: 0,
+        backgroundColor: 'rgba(0,0,0,0.05)', // Subtle background for the button
     },
 
     // ── Description Section ──
@@ -359,37 +375,29 @@ const styles = StyleSheet.create({
     },
     sectionLabel: {
         ...Typography.small,
-        color: Colors.textTertiary,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         marginBottom: Spacing.sm,
     },
     descriptionText: {
         ...Typography.body,
-        color: Colors.textSecondary,
         lineHeight: 24,
     },
 
     // ── Details Card ──
     detailsCard: {
-        backgroundColor: Colors.surface,
         borderRadius: Radii.lg,
         padding: Spacing.lg,
         marginBottom: Spacing.xxl,
         borderWidth: 1,
-        borderColor: Colors.borderLight,
     },
     detailDivider: {
         height: 1,
-        backgroundColor: Colors.borderLight,
     },
 
     // ── Actions ──
     actions: {
         gap: Spacing.md,
-    },
-    actionButton: {
-        // Default styling from AppButton
     },
 
     // ── Not Found ──
@@ -401,7 +409,6 @@ const styles = StyleSheet.create({
     },
     notFoundText: {
         ...Typography.h3,
-        color: Colors.textSecondary,
     },
 
     // ── Delete Confirmation (Web) ──
@@ -411,13 +418,11 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: Colors.overlay,
         justifyContent: 'center',
         alignItems: 'center',
         padding: Spacing.xxl,
     },
     confirmCard: {
-        backgroundColor: Colors.surface,
         borderRadius: Radii.lg,
         padding: Spacing.xxl,
         maxWidth: 360,
@@ -426,12 +431,10 @@ const styles = StyleSheet.create({
     },
     confirmTitle: {
         ...Typography.h3,
-        color: Colors.textPrimary,
         marginBottom: Spacing.sm,
     },
     confirmMessage: {
         ...Typography.body,
-        color: Colors.textSecondary,
         marginBottom: Spacing.xl,
         lineHeight: 22,
     },

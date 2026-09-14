@@ -24,6 +24,7 @@ import TaskCard from '../../components/TaskCard';
 import FilterChip from '../../components/FilterChip';
 import EmptyState from '../../components/EmptyState';
 import SkeletonLoader from '../../components/SkeletonLoader';
+import FloatingActionButton from '../../components/FloatingActionButton';
 import { getProcessedTasks, getTaskStats } from '../../utils/taskSorter';
 
 /**
@@ -75,8 +76,8 @@ export default function TaskListScreen({ navigation }: any) {
         navigation.navigate('TaskDetail', { taskId });
     };
 
-    const handleToggleComplete = (taskId: string) => {
-        dispatch(toggleComplete(taskId) as any);
+    const handleToggleComplete = (taskId: string, currentCompleted: boolean) => {
+        dispatch(toggleComplete({ taskId, completed: !currentCompleted }) as any);
     };
 
     // Empty state config based on active filter
@@ -204,7 +205,7 @@ export default function TaskListScreen({ navigation }: any) {
                     <TaskCard
                         task={item}
                         onPress={() => handleTaskPress(item.id)}
-                        onToggleComplete={() => handleToggleComplete(item.id)}
+                        onToggleComplete={() => handleToggleComplete(item.id, item.completed)}
                     />
                 )}
                 ListEmptyComponent={
@@ -216,13 +217,18 @@ export default function TaskListScreen({ navigation }: any) {
                             actionLabel={filter === 'all' ? 'Add Task' : undefined}
                             onAction={
                                 filter === 'all'
-                                    ? () => navigation.navigate('AddTab')
+                                    ? () => navigation.navigate('AddTask')
                                     : undefined
                             }
                         />
                     ) : null
                 }
                 showsVerticalScrollIndicator={false}
+            />
+
+            <FloatingActionButton 
+                onPress={() => navigation.navigate('AddTask')}
+                icon="plus" 
             />
         </View>
     );

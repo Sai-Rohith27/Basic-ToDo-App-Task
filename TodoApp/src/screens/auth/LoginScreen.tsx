@@ -1,172 +1,150 @@
-import React, { useState } from 'react';
-import {
-    View,
-    StyleSheet,
-    ScrollView,
-    KeyboardAvoidingView,
-    Platform,
-} from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView, Animated, Image, useWindowDimensions } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppDispatch } from '../../redux/hooks';
-import { setUser, setAuthError, setAuthLoading } from '../../redux/slices/authSlice';
 import { loginUser } from '../../services/firebaseAuth';
-import { Colors, Spacing, Typography, Layout, Radii } from '../../theme';
 import AppInput from '../../components/AppInput';
 import AppButton from '../../components/AppButton';
+import ForgotPasswordModal from '../../components/ForgotPasswordModal';
+import { useTheme, Spacing, Typography, Layout, Radii } from '../../theme';
 
-/**
- * LOGIN SCREEN
- * User enters email & password to login.
- * Preserves existing Firebase auth logic — only UI is redesigned.
- */
+const HERO_IMAGE_URL = { uri: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?q=80&w=1000&auto=format&fit=crop' };
+
 export default function LoginScreen({ navigation }: any) {
-    // State for form inputs
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-
-    // Field-level validation
-    const [emailTouched, setEmailTouched] = useState(false);
-    const [passwordTouched, setPasswordTouched] = useState(false);
-
-    const dispatch = useAppDispatch();
+    const { colors } = useTheme();
     const insets = useSafeAreaInsets();
+    const { width } = useWindowDimensions();
 
-    // Inline validators
-    const getEmailError = (): string | undefined => {
-        if (!emailTouched || !email) return undefined;
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) return 'Enter a valid email address';
-        return undefined;
-    };
+    const isLargeScreen = width > 768;
 
-    const getPasswordError = (): string | undefined => {
-        if (!passwordTouched || !password) return undefined;
-        if (password.length < 6) return 'Password must be at least 6 characters';
-        return undefined;
-    };
+    const [email, setEmail] = React.useState('');
+    const [password, setPassword] = React.useState('');
+    const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState('');
+    const [forgotPasswordVisible, setForgotPasswordVisible] = React.useState(false);
 
-    /**
-     * HANDLE LOGIN
-     * Called when user presses "Login" button.
-     * (Existing logic preserved exactly)
-     */
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.spring(slideAnim, { toValue: 0, tension: 40, friction: 8, useNativeDriver: true }),
+        ]).start();
+    }, []);
+
     const handleLogin = async () => {
-        // Validate inputs
         if (!email || !password) {
-            setError('Please fill in all fields');
+            setError('Please enter both email and password');
             return;
         }
 
-        setLoading(true);
-        setError('');
-
-        // Call Firebase auth function
-        const result = await loginUser(email, password);
-
-        if (result.success && result.user) {
-            // Login successful - update Redux
-            dispatch(setUser(result.user));
-            // Navigation happens automatically (RootNavigator sees isAuthenticated = true)
-        } else {
-            // Login failed - show error
-            setError(result.error || 'Login failed');
-            dispatch(setAuthError(result.error || 'Login failed'));
+        try {
+            setLoading(true);
+            setError('');
+            const result = await loginUser(email, password);
+            if (!result.success) {
+                setError(result.error || 'Login failed');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Login failed');
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     return (
-        <KeyboardAvoidingView
+        <KeyboardAvoidingView 
+            style={[styles.container, { backgroundColor: colors.background }]} 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
         >
-            <ScrollView
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    { paddingTop: insets.top + Spacing.xxxl },
-                ]}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-            >
-                {/* ── Branding Header ── */}
-                <View style={styles.header}>
-                    <View style={styles.logoContainer}>
-                        <Text style={styles.logoIcon}>✓</Text>
-                    </View>
-                    <Text style={styles.appName}>Taskly</Text>
-                    <Text style={styles.tagline}>Organize your day, own your goals.</Text>
+            <View style={[styles.layoutWrapper, isLargeScreen && styles.layoutRow]}>
+
+                {/* Hero Image Section */}
+                <View style={[styles.imageContainer, isLargeScreen ? styles.imageContainerLarge : styles.imageContainerSmall]}>
+                    <Image source={HERO_IMAGE_URL} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                    <View style={StyleSheet.absoluteFill} />{/* Overlay placeholder if needed */}
                 </View>
 
-                {/* ── Form Card ── */}
-                <View style={styles.formCard}>
-                    <Text style={styles.formTitle}>Welcome Back</Text>
-                    <Text style={styles.formSubtitle}>Sign in to continue</Text>
+                {/* Form Section */}
+                <ScrollView
+                    contentContainerStyle={[
+                        styles.formScrollContainer, 
+                        !isLargeScreen && { paddingTop: Spacing.huge, paddingBottom: Math.max(insets.bottom, Spacing.xl) },
+                        isLargeScreen && { paddingVertical: Spacing.huge }
+                    ]}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <Animated.View style={[styles.formContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
-                    {/* Error Banner */}
-                    {error ? (
-                        <View style={styles.errorBanner}>
-                            <Text style={styles.errorIcon}>⚠</Text>
-                            <Text style={styles.errorText}>{error}</Text>
+                        <View style={styles.header}>
+                            <Text style={[styles.title, { color: colors.textPrimary }]}>Welcome back</Text>
+                            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                                Enter your details to access your tasks.
+                            </Text>
                         </View>
-                    ) : null}
 
-                    {/* Email Input */}
-                    <AppInput
-                        label="Email"
-                        value={email}
-                        onChangeText={(text) => {
-                            setEmail(text);
-                            setError('');
-                        }}
-                        leftIcon="email-outline"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        disabled={loading}
-                        error={getEmailError()}
-                        onBlur={() => setEmailTouched(true)}
-                    />
+                        <View style={styles.formGroup}>
+                            <AppInput
+                                label="Email Address"
+                                value={email}
+                                onChangeText={(t) => { setEmail(t); setError(''); }}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                leftIcon="email-outline"
+                                variant="pill"
+                            />
 
-                    {/* Password Input */}
-                    <AppInput
-                        label="Password"
-                        value={password}
-                        onChangeText={(text) => {
-                            setPassword(text);
-                            setError('');
-                        }}
-                        leftIcon="lock-outline"
-                        secureTextEntry
-                        showToggle
-                        disabled={loading}
-                        error={getPasswordError()}
-                        onBlur={() => setPasswordTouched(true)}
-                    />
+                            <View>
+                                <AppInput
+                                    label="Password"
+                                    value={password}
+                                    onChangeText={(t) => { setPassword(t); setError(''); }}
+                                    secureTextEntry
+                                    showToggle
+                                    leftIcon="lock-outline"
+                                    variant="pill"
+                                />
+                                <TouchableOpacity style={styles.forgotPasswordButton} onPress={() => setForgotPasswordVisible(true)}>
+                                    <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot Password?</Text>
+                                </TouchableOpacity>
+                            </View>
 
-                    {/* Login Button */}
-                    <AppButton
-                        title={loading ? 'Signing in...' : 'Sign In'}
-                        onPress={handleLogin}
-                        loading={loading}
-                        disabled={loading}
-                        style={styles.loginButton}
-                    />
-                </View>
+                            {error ? (
+                                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+                            ) : null}
 
-                {/* ── Footer ── */}
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>Don't have an account? </Text>
-                    <Text
-                        style={styles.footerLink}
-                        onPress={() => navigation.navigate('Register')}
-                    >
-                        Sign Up
-                    </Text>
-                </View>
-            </ScrollView>
+                            <AppButton
+                                title="Sign In"
+                                onPress={handleLogin}
+                                loading={loading}
+                                style={styles.mainButton}
+                                shape="pill"
+                            />
+                        </View>
+
+
+
+                        <View style={styles.footer}>
+                            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                                Don't have an account?{' '}
+                            </Text>
+                            <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.7} style={{ paddingVertical: 4 }}>
+                                <Text style={[styles.link, { color: colors.primary }]}>Sign Up</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                    </Animated.View>
+                </ScrollView>
+            </View>
+
+            {/* FORGOT PASSWORD MODAL */}
+            <ForgotPasswordModal 
+                visible={forgotPasswordVisible}
+                onClose={() => setForgotPasswordVisible(false)}
+                initialEmail={email}
+            />
         </KeyboardAvoidingView>
     );
 }
@@ -174,102 +152,93 @@ export default function LoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
     },
-    scrollContent: {
+    layoutWrapper: {
+        flex: 1,
+        flexDirection: 'column',
+    },
+    layoutRow: {
+        flexDirection: 'row',
+    },
+    imageContainer: {
+        width: '100%',
+        overflow: 'hidden',
+    },
+    imageContainerSmall: {
+        height: '35%',
+        borderBottomLeftRadius: Radii.xl,
+        borderBottomRightRadius: Radii.xl,
+    },
+    imageContainerLarge: {
+        flex: 1,
+        height: '100%',
+        borderTopRightRadius: 32,
+        borderBottomRightRadius: 32,
+    },
+    formScrollContainer: {
         flexGrow: 1,
-        paddingHorizontal: Layout.screenPaddingH,
-        paddingBottom: Spacing.xxxl,
+        justifyContent: 'center',
     },
-
-    // ── Header / Branding ──
+    formContent: {
+        width: '100%',
+        maxWidth: 440,
+        alignSelf: 'center',
+        paddingHorizontal: Layout.screenPaddingH,
+    },
     header: {
-        alignItems: 'center',
         marginBottom: Spacing.xxxl,
     },
-    logoContainer: {
-        width: 64,
-        height: 64,
-        borderRadius: 18,
-        backgroundColor: Colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: Spacing.md,
-    },
-    logoIcon: {
-        fontSize: 28,
-        color: Colors.textInverse,
-        fontWeight: '700',
-    },
-    appName: {
-        ...Typography.h1,
-        color: Colors.primary,
+    title: {
+        fontSize: 32,
+        fontWeight: '800',
+        letterSpacing: -0.5,
         marginBottom: Spacing.xs,
     },
-    tagline: {
-        ...Typography.caption,
-        color: Colors.textSecondary,
-    },
-
-    // ── Form Card ──
-    formCard: {
-        backgroundColor: Colors.surface,
-        borderRadius: Radii.xl,
-        padding: Spacing.xxl,
-        maxWidth: Layout.maxFormWidth,
-        width: '100%',
-        alignSelf: 'center',
-        borderWidth: 1,
-        borderColor: Colors.borderLight,
-    },
-    formTitle: {
-        ...Typography.h2,
-        color: Colors.textPrimary,
-        marginBottom: Spacing.xs,
-    },
-    formSubtitle: {
+    subtitle: {
         ...Typography.body,
-        color: Colors.textSecondary,
-        marginBottom: Spacing.xxl,
     },
-
-    // ── Error Banner ──
-    errorBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: Colors.errorBg,
-        borderRadius: Radii.sm,
-        padding: Spacing.md,
-        marginBottom: Spacing.lg,
+    formGroup: {
         gap: Spacing.sm,
     },
-    errorIcon: {
-        fontSize: 16,
+    forgotPasswordButton: {
+        alignSelf: 'flex-end',
+        paddingVertical: Spacing.xs,
+        marginTop: -Spacing.xs,
+    },
+    forgotPasswordText: {
+        ...Typography.captionMedium,
+    },
+    mainButton: {
+        marginTop: Spacing.md,
     },
     errorText: {
         ...Typography.caption,
-        color: Colors.error,
+        textAlign: 'center',
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: Spacing.xxl,
+    },
+    dividerLine: {
         flex: 1,
+        height: 1,
     },
-
-    // ── Button ──
-    loginButton: {
-        marginTop: Spacing.sm,
+    dividerText: {
+        ...Typography.captionMedium,
+        marginHorizontal: Spacing.md,
     },
-
-    // ── Footer ──
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: Spacing.xxl,
-        paddingBottom: Spacing.lg,
+        alignItems: 'center',
+        marginTop: Spacing.xxxl,
     },
     footerText: {
         ...Typography.body,
-        color: Colors.textSecondary,
     },
-    footerLink: {
-        ...Typography.bodyMedium,
-        color: Colors.primary,
+    link: {
+        ...Typography.body,
+        fontWeight: '700',
     },
 });
