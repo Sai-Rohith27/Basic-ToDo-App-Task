@@ -21,7 +21,10 @@ export const connectDB = async () => {
     } catch (error) {
         console.error('✗ MongoDB connection failed:');
         console.error(error);
-        process.exit(1);
+        if (process.env.VERCEL !== '1') {
+            process.exit(1);
+        }
+        throw error;
     }
 };
 
