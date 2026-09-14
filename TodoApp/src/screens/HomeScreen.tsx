@@ -73,8 +73,8 @@ export default function HomeScreen({ navigation }: any) {
     };
 
     // Handle checkbox toggle
-    const handleToggleComplete = (taskId: string) => {
-        dispatch(toggleComplete(taskId) as any);
+    const handleToggleComplete = (taskId: string, currentCompleted: boolean) => {
+        dispatch(toggleComplete({ taskId, completed: !currentCompleted }) as any);
     };
 
     return (
@@ -189,7 +189,7 @@ export default function HomeScreen({ navigation }: any) {
                         <TaskCard
                             task={item}
                             onPress={() => handleTaskPress(item.id)}
-                            onToggleComplete={() => handleToggleComplete(item.id)}
+                            onToggleComplete={() => handleToggleComplete(item.id, item.completed)}
                         />
                     </View>
                 )}

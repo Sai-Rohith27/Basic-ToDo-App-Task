@@ -20,11 +20,7 @@ const app: Express = express();
 // Enable CORS (allow requests from frontend)
 app.use(
     cors({
-        origin: [
-            process.env.FRONTEND_URL || 'http://localhost:19006',
-            'http://localhost:8081',
-            'http://localhost:19000',
-        ],
+        origin: true, // Allow all origins to fix CORS issues during testing
         credentials: true,
     })
 );
@@ -34,6 +30,12 @@ app.use(express.json());
 
 // Parse URL-encoded request bodies
 app.use(express.urlencoded({ extended: true }));
+
+// Log all incoming requests for debugging
+app.use((req: Request, res: Response, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
 
 /**
  * INITIALIZE FIREBASE ADMIN
@@ -112,7 +114,7 @@ const startServer = async () => {
 
         // Start server only if we're not in a serverless environment (Vercel)
         if (process.env.VERCEL !== '1') {
-            app.listen(PORT, () => {
+            app.listen(PORT as number, '0.0.0.0', () => {
                 console.log(`✓ Server running on http://localhost:${PORT}`);
                 console.log(`✓ API: http://localhost:${PORT}/api/tasks`);
             });

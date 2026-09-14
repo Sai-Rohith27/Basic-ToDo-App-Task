@@ -119,17 +119,10 @@ export const updateTask = createAsyncThunk(
  */
 export const toggleComplete = createAsyncThunk(
     'tasks/toggleComplete',
-    async (taskId: string, { getState, rejectWithValue }) => {
+    async ({ taskId, completed }: { taskId: string; completed: boolean }, { rejectWithValue }) => {
         try {
-            const state = getState() as { tasks: TaskState };
-            const task = state.tasks.tasks.find(t => t.id === taskId);
-
-            if (!task) {
-                return rejectWithValue('Task not found');
-            }
-
             const result = await apiClient.updateTask(taskId, {
-                completed: !task.completed,
+                completed,
             });
 
             if (!result.success) {
@@ -238,9 +231,9 @@ const taskSlice = createSlice({
         builder
             .addCase(toggleComplete.pending, (state, action) => {
                 // Optimistic update: toggle immediately for snappy UX
-                const task = state.tasks.find(t => t.id === action.meta.arg);
+                const task = state.tasks.find(t => t.id === action.meta.arg.taskId);
                 if (task) {
-                    task.completed = !task.completed;
+                    task.completed = action.meta.arg.completed;
                 }
             })
             .addCase(toggleComplete.fulfilled, (state, action) => {
@@ -254,9 +247,9 @@ const taskSlice = createSlice({
             })
             .addCase(toggleComplete.rejected, (state, action) => {
                 // Revert optimistic update on failure
-                const task = state.tasks.find(t => t.id === action.meta.arg);
+                const task = state.tasks.find(t => t.id === action.meta.arg.taskId);
                 if (task) {
-                    task.completed = !task.completed;
+                    task.completed = !action.meta.arg.completed;
                 }
                 state.error = action.payload as string;
             });

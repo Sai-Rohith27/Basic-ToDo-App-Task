@@ -24,7 +24,7 @@ export const connectDB = async () => {
         if (process.env.VERCEL !== '1') {
             process.exit(1);
         }
-        throw error;
+        return false;
     }
 };
 

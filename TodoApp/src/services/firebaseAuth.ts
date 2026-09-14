@@ -3,6 +3,7 @@ import {
     signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
+    sendPasswordResetEmail,
     User as FirebaseUser,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -130,4 +131,26 @@ export const getIdToken = async (): Promise<string | null> => {
         return await user.getIdToken();
     }
     return null;
+};
+
+/**
+ * RESET PASSWORD
+ * Sends a password reset email to the user
+ */
+export const resetPassword = async (email: string) => {
+    try {
+        await sendPasswordResetEmail(auth, email);
+        return { success: true };
+    } catch (error: any) {
+        let errorMessage = 'Failed to send reset email';
+        if (error.code === 'auth/user-not-found') {
+            errorMessage = 'Email not registered';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = 'Invalid email address';
+        }
+        return {
+            success: false,
+            error: errorMessage,
+        };
+    }
 };

@@ -25,9 +25,8 @@ export default function TaskDetailScreen({ route, navigation }: any) {
     const dispatch = useAppDispatch();
     const { colors } = useTheme();
 
-    const task = useAppSelector((state) =>
-        state.tasks.tasks.find((t) => t.id === taskId)
-    );
+    const { tasks, loading, error } = useAppSelector((state) => state.tasks);
+    const task = tasks.find((t) => t.id === taskId);
 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -131,6 +130,15 @@ export default function TaskDetailScreen({ route, navigation }: any) {
                     {formatRelativeDeadline(task.deadline)}
                 </Text>
             </View>
+
+            {/* ERROR MESSAGE (For debugging API issues) */}
+            {error ? (
+                <View style={{ backgroundColor: colors.errorBg, padding: Spacing.md, borderRadius: Radii.md, marginBottom: Spacing.lg }}>
+                    <Text style={{ color: colors.error, fontWeight: 'bold' }}>
+                        API ERROR: {error}
+                    </Text>
+                </View>
+            ) : null}
 
             {/* ── Title & Priority ── */}
             <View style={styles.titleSection}>

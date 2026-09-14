@@ -168,7 +168,7 @@ export const updateTask = async (
         if (!task) {
             res.status(404).json({
                 success: false,
-                error: 'Task not found',
+                error: `Task not found. Searching for _id: ${taskId}, userId: ${userId}`,
             });
             return;
         }
